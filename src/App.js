@@ -205,11 +205,11 @@ export default function App() {
             marginTop: 50
           }}
         >
-          {_.map(gameState, ({ row, col, color, key }) => (
+          {_.map(gameState, ({ row, col, color, key, locked }) => (
             <div
               key={key}
               style={{
-                borderRadius: 30,
+                borderRadius: locked ? 10 : 30,
                 background: color,
                 width: 30,
                 height: 30,
