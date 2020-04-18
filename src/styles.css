@@ -3,11 +3,13 @@
   text-align: center;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   padding: 0;
   margin: 0;
   overscroll-behavior: none;
+  overflow: hidden;
 }
 
 div {
