@@ -174,7 +174,7 @@ export default function App() {
             dots
             step={1}
             value={numBlock}
-            min={2}
+            min={0}
             max={12}
             onChange={setNumBlock}
           />
