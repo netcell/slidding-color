@@ -164,6 +164,44 @@ export default function App() {
         }}
         tabIndex="0"
       >
+        <p
+          style={{
+            margin: 0
+          }}
+        >
+          <span
+            onClick={init}
+            style={{
+              color: "white",
+              fontSize: "41px",
+              textTransform: "uppercase",
+              fontWeight: "bold",
+              cursor: "pointer",
+              userSelect: "none"
+            }}
+          >
+            Slidding
+          </span>
+        </p>
+        <p
+          style={{
+            marginTop: 0
+          }}
+        >
+          <span
+            onClick={init}
+            style={{
+              color: "white",
+              fontSize: "25px",
+              textTransform: "uppercase",
+              fontWeight: "bold",
+              cursor: "pointer",
+              userSelect: "none"
+            }}
+          >
+            Color Puzzle
+          </span>
+        </p>
         <div
           style={{
             height: showConfig ? 200 : 0,
