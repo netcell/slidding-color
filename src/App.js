@@ -15,12 +15,34 @@ const RIGHT = { row: 0, col: 1 };
 const DOWN = { row: 1, col: 0 };
 const UP = { row: -1, col: 0 };
 
+const colors = [
+  "0.9372549, 0.4509804, 0.654902",
+  "0.5921569, 0.44313726, 0.84705883",
+  "0.972549, 0.78431374, 0.3529412",
+  "0.78039217, 0.827451, 0.3254902",
+  "0.41568628, 0.7607843, 0.8392157",
+  "0.37254903, 0.87058824, 0.7019608",
+  "0.827451, 0.4392157, 0.3254902",
+  "0.3372549, 0.3254902, 0.827451",
+  "0.3529412, 0.827451, 0.3254902",
+  "0.79607844, 0.3254902, 0.827451",
+  "0.827451, 0.7529412, 0.3254902",
+  "0.827451, 0.3254902, 0.45882353",
+  "0.827451, 0.3254902, 0.3647059",
+  "1, 0.62352943, 0.77254903"
+].map(color => {
+  const [r, g, b] = color.split(", ");
+  return (
+    "rgb(" + [(r * 255) >> 0, (g * 255) >> 0, (b * 255) >> 0].join(", ") + ")"
+  );
+});
+
 export default function App() {
   const [size, setSize] = useState(5);
   const [numBlock, setNumBlock] = useState(3);
   const [space, setSpace] = useState(1);
   const [showConfig, setShowConfig] = useState(true);
-  const [difficulty, setDifficulty] = useState(0);
+  const [difficulty, setDifficulty] = useState(20);
 
   const [showUI, setShowUI] = useState(true);
   const [themeDay, setThemeDay] = useState(false);
@@ -38,30 +60,6 @@ export default function App() {
   };
 
   const init = () => {
-    const colors = [
-      "0.9372549, 0.4509804, 0.654902",
-      "0.5921569, 0.44313726, 0.84705883",
-      "0.972549, 0.78431374, 0.3529412",
-      "0.78039217, 0.827451, 0.3254902",
-      "0.41568628, 0.7607843, 0.8392157",
-      "0.37254903, 0.87058824, 0.7019608",
-      "0.827451, 0.4392157, 0.3254902",
-      "0.3372549, 0.3254902, 0.827451",
-      "0.3529412, 0.827451, 0.3254902",
-      "0.79607844, 0.3254902, 0.827451",
-      "0.827451, 0.7529412, 0.3254902",
-      "0.827451, 0.3254902, 0.45882353",
-      "0.827451, 0.3254902, 0.3647059",
-      "1, 0.62352943, 0.77254903"
-    ].map(color => {
-      const [r, g, b] = color.split(", ");
-      return (
-        "rgb(" +
-        [(r * 255) >> 0, (g * 255) >> 0, (b * 255) >> 0].join(", ") +
-        ")"
-      );
-    });
-
     const positions = _.flatten(
       _.range(size).map(col => _.range(size).map(row => ({ row, col })))
     );
@@ -89,11 +87,10 @@ export default function App() {
       .keyBy(({ row, col }) => `${row},${col}`)
       .value();
 
-    const originalState = state;
     let hashes = [hashState(state)];
     let directions = [];
 
-    for (let i = 0; i < 500; i++) {
+    for (let i = 0; i < difficulty; i++) {
       const direction = _.sample([UP, DOWN, LEFT, RIGHT]);
       state = actionCalc(direction, state);
       const hash = hashState(state);
@@ -104,22 +101,11 @@ export default function App() {
       } else {
         hashes = hashes.slice(0, hashIndex + 1);
         directions = directions.slice(0, hashIndex);
+        i = directions.length - 1;
       }
     }
     console.log(directions.length);
     setReplay(_.reverse(directions));
-
-    const difficulty = _.reduce(
-      state,
-      (difficulty, { col, color }) => {
-        const colorIndex = colors.indexOf(color);
-        if (colorIndex < 0) return difficulty;
-        else return difficulty + Math.pow(col - colorIndex, 2);
-      },
-      0
-    );
-
-    setDifficulty(difficulty);
 
     setGameState(state);
   };
@@ -161,6 +147,39 @@ export default function App() {
   const actionReplayNext = replay => {
     const [direction, ...remainReplay] = replay;
     console.log(direction);
+    const groupColor = _.chain(gameState)
+      .filter(node => !node.locked)
+      .groupBy("color")
+      .map(group => {
+        return _.chain(group)
+          .map(node => node.col)
+          .uniq()
+          .value().length;
+      })
+      .max()
+      .value();
+    if (groupColor === 1) {
+      const state = {
+        ...gameState
+      };
+      _.range(size).map(row => {
+        return _.range(size).map(col => {
+          if (!state[`${row},${col}`]) {
+            state[`${row},${col}`] = {
+              row,
+              col,
+              color: colors[col],
+              key: `blank_${row}_${col}`
+            };
+          }
+        });
+      });
+      setGameState(state);
+      return;
+    }
+    // if () {
+
+    // }
     switch (direction) {
       case UP:
         action(DOWN)();
@@ -278,7 +297,7 @@ export default function App() {
           </p>
           <div
             style={{
-              height: showConfig ? 200 : 0,
+              height: showConfig ? 290 : 0,
               overflow: "hidden",
               transition: "ease all 0.2s"
             }}
@@ -330,6 +349,23 @@ export default function App() {
                 min={1}
                 max={4}
                 onChange={setSpace}
+              />
+            </p>
+            <p
+              style={{
+                marginBottom: "20px",
+                width: 300,
+                margin: "30px auto 40px"
+              }}
+            >
+              <label style={{ color: "white" }}>{difficulty} Steps</label>
+              <Slider
+                dots
+                step={1}
+                value={difficulty}
+                min={1}
+                max={100}
+                onChange={setDifficulty}
               />
             </p>
           </div>
