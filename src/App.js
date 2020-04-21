@@ -297,7 +297,7 @@ export default function App() {
           </p>
           <div
             style={{
-              height: showConfig ? 290 : 0,
+              height: showConfig ? 200 : 0,
               overflow: "hidden",
               transition: "ease all 0.2s"
             }}
@@ -334,7 +334,7 @@ export default function App() {
                 onChange={setNumBlock}
               />
             </p>
-            <p
+            {/* <p
               style={{
                 marginBottom: "20px",
                 width: 300,
@@ -350,7 +350,7 @@ export default function App() {
                 max={4}
                 onChange={setSpace}
               />
-            </p>
+            </p> */}
             <p
               style={{
                 marginBottom: "20px",
