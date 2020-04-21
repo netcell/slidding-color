@@ -4,10 +4,16 @@ import "./styles.css";
 import _ from "lodash";
 import randomColor from "randomcolor";
 import bg from "./bg.png";
+import bgDay from "./bgday.png";
 import Slider from "rc-slider";
 import { Swipeable } from "react-swipeable";
 
 console.log(bg);
+
+const LEFT = { row: 0, col: -1 };
+const RIGHT = { row: 0, col: 1 };
+const DOWN = { row: 1, col: 0 };
+const UP = { row: -1, col: 0 };
 
 export default function App() {
   const [size, setSize] = useState(5);
@@ -16,7 +22,20 @@ export default function App() {
   const [showConfig, setShowConfig] = useState(true);
   const [difficulty, setDifficulty] = useState(0);
 
+  const [showUI, setShowUI] = useState(true);
+  const [themeDay, setThemeDay] = useState(false);
+
   const [gameState, setGameState] = useState([]);
+  const [replay, setReplay] = useState([]);
+  const [locked, setLocked] = useState(false);
+
+  const hashState = state => {
+    return _.chain(state)
+      .map(({ key, row, col }) => `${key}.${row}.${col}`)
+      .sort()
+      .join(",")
+      .value();
+  };
 
   const init = () => {
     const colors = [
@@ -56,7 +75,7 @@ export default function App() {
         if (blocks.indexOf(position) >= 0)
           return {
             ...position,
-            color: "black",
+            color: themeDay ? "gray" : "black",
             key: index,
             locked: true
           };
@@ -71,21 +90,24 @@ export default function App() {
       .value();
 
     const originalState = state;
+    let hashes = [hashState(state)];
+    let directions = [];
 
-    for (let i = 0; i < 1000; i++) {
-      state = actionCalc(
-        _.sample([0, 1])
-          ? {
-              row: _.sample([-1, 1]),
-              col: 0
-            }
-          : {
-              row: 0,
-              col: _.sample([-1, 1])
-            },
-        state
-      );
+    for (let i = 0; i < 500; i++) {
+      const direction = _.sample([UP, DOWN, LEFT, RIGHT]);
+      state = actionCalc(direction, state);
+      const hash = hashState(state);
+      const hashIndex = hashes.indexOf(hash);
+      if (hashIndex < 0) {
+        hashes.push(hash);
+        directions.push(direction);
+      } else {
+        hashes = hashes.slice(0, hashIndex + 1);
+        directions = directions.slice(0, hashIndex);
+      }
     }
+    console.log(directions.length);
+    setReplay(_.reverse(directions));
 
     const difficulty = _.reduce(
       state,
@@ -136,19 +158,65 @@ export default function App() {
     setGameState(state);
   };
 
-  // const upHandler = action({ row: -1, col: 0 });
-  // const downHandler = action({ row: 1, col: 0 });
-  // const leftHandler = action({ row: 0, col: -1 });
-  // const rightHandler = action({ row: 0, col: 1 });
+  const actionReplayNext = replay => {
+    const [direction, ...remainReplay] = replay;
+    console.log(direction);
+    switch (direction) {
+      case UP:
+        action(DOWN)();
+        break;
+      case DOWN:
+        action(UP)();
+        break;
+      case LEFT:
+        action(RIGHT)();
+        break;
+      case RIGHT:
+        action(LEFT)();
+        break;
+      default:
+        setLocked(false);
+        setReplay([]);
+        return;
+    }
+    setReplay(remainReplay);
+  };
+
+  useEffect(() => {
+    const handleKeyPressed = event => {
+      if (locked) return;
+      switch (event.key) {
+        case "q":
+          setShowUI(!showUI);
+          break;
+        case "w":
+          setThemeDay(!themeDay);
+          break;
+        case "e":
+          setShowConfig(!showConfig);
+          break;
+        case " ":
+          // setLocked(true);
+          actionReplayNext(replay);
+          break;
+        default:
+          return;
+      }
+    };
+    window.addEventListener("keyup", handleKeyPressed);
+    return () => {
+      window.removeEventListener("keyup", handleKeyPressed);
+    };
+  }, [locked, showUI, replay, themeDay, showConfig]);
 
   return (
     <Swipeable
       trackMouse
       delta={2}
-      onSwipedLeft={action({ row: 0, col: -1 })}
-      onSwipedRight={action({ row: 0, col: 1 })}
-      onSwipedDown={action({ row: 1, col: 0 })}
-      onSwipedUp={action({ row: -1, col: 0 })}
+      onSwipedLeft={action(LEFT)}
+      onSwipedRight={action(RIGHT)}
+      onSwipedDown={action(DOWN)}
+      onSwipedUp={action(UP)}
     >
       <div
         className="App"
@@ -156,7 +224,7 @@ export default function App() {
           paddingTop: "50px",
           paddingBottom: "50px",
           margin: 0,
-          background: `url(${bg})`,
+          background: `url(${themeDay ? bgDay : bg})`,
           backgroundSize: "cover",
           pointerEvent: "none",
           userSelect: "none",
@@ -164,154 +232,161 @@ export default function App() {
         }}
         tabIndex="0"
       >
-        <p
-          style={{
-            margin: 0
-          }}
-        >
-          <span
-            onClick={init}
-            style={{
-              color: "white",
-              fontSize: "41px",
-              textTransform: "uppercase",
-              fontWeight: "bold",
-              cursor: "pointer",
-              userSelect: "none"
-            }}
-          >
-            Slidding
-          </span>
-        </p>
-        <p
-          style={{
-            marginTop: 0
-          }}
-        >
-          <span
-            onClick={init}
-            style={{
-              color: "white",
-              fontSize: "25px",
-              textTransform: "uppercase",
-              fontWeight: "bold",
-              cursor: "pointer",
-              userSelect: "none"
-            }}
-          >
-            Color Puzzle
-          </span>
-        </p>
         <div
           style={{
-            height: showConfig ? 200 : 0,
-            overflow: "hidden",
-            transition: "ease all 0.2s"
+            height: "auto",
+            opacity: showUI ? 1 : 0
           }}
         >
           <p
             style={{
-              width: 300,
-              margin: "0px auto 40px"
+              margin: 0
             }}
           >
-            <label style={{ color: "white" }}>Size {size}</label>
-            <Slider
-              dots
-              step={1}
-              value={size}
-              min={3}
-              max={6}
-              onChange={setSize}
-            />
+            <span
+              onClick={init}
+              style={{
+                color: "white",
+                fontSize: "41px",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+                cursor: "pointer",
+                userSelect: "none"
+              }}
+            >
+              Slidding
+            </span>
           </p>
           <p
             style={{
-              width: 300,
-              margin: "30px auto 40px"
+              marginTop: 0
             }}
           >
-            <label style={{ color: "white" }}>{numBlock} Obstacles</label>
-            <Slider
-              dots
-              step={1}
-              value={numBlock}
-              min={0}
-              max={6}
-              onChange={setNumBlock}
-            />
+            <span
+              onClick={init}
+              style={{
+                color: "white",
+                fontSize: "25px",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+                cursor: "pointer",
+                userSelect: "none"
+              }}
+            >
+              Color Puzzle
+            </span>
           </p>
-          <p
+          <div
             style={{
-              marginBottom: "20px",
-              width: 300,
-              margin: "30px auto 40px"
+              height: showConfig ? 200 : 0,
+              overflow: "hidden",
+              transition: "ease all 0.2s"
             }}
           >
-            <label style={{ color: "white" }}>{space} Blanks</label>
-            <Slider
-              dots
-              step={1}
-              value={space}
-              min={1}
-              max={4}
-              onChange={setSpace}
-            />
-          </p>
-        </div>
+            <p
+              style={{
+                width: 300,
+                margin: "0px auto 40px"
+              }}
+            >
+              <label style={{ color: "white" }}>Size {size}</label>
+              <Slider
+                dots
+                step={1}
+                value={size}
+                min={3}
+                max={6}
+                onChange={setSize}
+              />
+            </p>
+            <p
+              style={{
+                width: 300,
+                margin: "30px auto 40px"
+              }}
+            >
+              <label style={{ color: "white" }}>{numBlock} Obstacles</label>
+              <Slider
+                dots
+                step={1}
+                value={numBlock}
+                min={0}
+                max={6}
+                onChange={setNumBlock}
+              />
+            </p>
+            <p
+              style={{
+                marginBottom: "20px",
+                width: 300,
+                margin: "30px auto 40px"
+              }}
+            >
+              <label style={{ color: "white" }}>{space} Blanks</label>
+              <Slider
+                dots
+                step={1}
+                value={space}
+                min={1}
+                max={4}
+                onChange={setSpace}
+              />
+            </p>
+          </div>
 
-        <p>
-          <span
-            onClick={() => setShowConfig(!showConfig)}
-            style={{
-              padding: 10,
-              color: "black",
-              fontSize: "20px",
-              textTransform: "uppercase",
-              fontWeight: "bold",
-              background: "#FFD200",
-              cursor: "pointer",
-              userSelect: "none",
-              borderRadius: 10,
-              boxShadow: "0 5px 0px 1px #CD5900"
-            }}
-          >
-            {showConfig ? "Hide" : "Show"} Config
-          </span>{" "}
-          &emsp;
-          <span
-            onClick={init}
-            style={{
-              padding: 10,
-              color: "black",
-              fontSize: "20px",
-              textTransform: "uppercase",
-              fontWeight: "bold",
-              background: "#FFD200",
-              cursor: "pointer",
-              userSelect: "none",
-              borderRadius: 10,
-              boxShadow: "0 5px 0px 1px #CD5900"
-            }}
-          >
-            Reset
-          </span>
-        </p>
-        {/* <p>
-          <span
-            style={{
-              padding: 5,
-              color: "white",
-              fontSize: "20px",
-              textTransform: "uppercase",
-              fontWeight: "bold",
-              cursor: "pointer",
-              userSelect: "none"
-            }}
-          >
-            Difficulty {difficulty}
-          </span>
-        </p> */}
+          <p>
+            <span
+              onClick={() => setShowConfig(!showConfig)}
+              style={{
+                padding: 10,
+                color: "black",
+                fontSize: "20px",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+                background: "#FFD200",
+                cursor: "pointer",
+                userSelect: "none",
+                borderRadius: 10,
+                boxShadow: "0 5px 0px 1px #CD5900"
+              }}
+            >
+              {showConfig ? "Hide" : "Show"} Config
+            </span>{" "}
+            &emsp;
+            <span
+              onClick={init}
+              style={{
+                padding: 10,
+                color: "black",
+                fontSize: "20px",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+                background: "#FFD200",
+                cursor: "pointer",
+                userSelect: "none",
+                borderRadius: 10,
+                boxShadow: "0 5px 0px 1px #CD5900"
+              }}
+            >
+              Reset
+            </span>
+          </p>
+          {/* <p>
+            <span
+              style={{
+                padding: 5,
+                color: "white",
+                fontSize: "20px",
+                textTransform: "uppercase",
+                fontWeight: "bold",
+                cursor: "pointer",
+                userSelect: "none"
+              }}
+            >
+              Difficulty {difficulty}
+            </span>
+          </p> */}
+        </div>
         <div
           style={{
             width: size * 60 + 20,
@@ -337,7 +412,9 @@ export default function App() {
                 top: row * 60 + 15,
                 transition: "all ease 0.2s",
                 border: `2px white solid`,
-                boxShadow: "0 0 10px 10px rgba(0, 0, 0, 0.5)"
+                boxShadow: themeDay
+                  ? "0 0 10px 1px rgba(0, 0, 0, 0.1)"
+                  : "0 0 10px 10px rgba(0, 0, 0, 0.5)"
               }}
             />
           ))}
