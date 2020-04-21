@@ -90,7 +90,11 @@ export default function App() {
     let hashes = [hashState(state)];
     let directions = [];
 
+    let count = 0;
+
     for (let i = 0; i < difficulty; i++) {
+      count++;
+      if (count > 100000) break;
       const direction = _.sample([UP, DOWN, LEFT, RIGHT]);
       state = actionCalc(direction, state);
       const hash = hashState(state);
