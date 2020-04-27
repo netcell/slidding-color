@@ -43,6 +43,7 @@ export default function App() {
   const [space, setSpace] = useState(1);
   const [showConfig, setShowConfig] = useState(true);
   const [difficulty, setDifficulty] = useState(20);
+  const [round, setRound] = useState(10);
 
   const [showUI, setShowUI] = useState(true);
   const [themeDay, setThemeDay] = useState(false);
@@ -60,9 +61,14 @@ export default function App() {
   };
 
   const init = () => {
-    const positions = _.flatten(
-      _.range(size).map(col => _.range(size).map(row => ({ row, col })))
-    );
+    const positions = _.sample([
+      _.flatten(
+        _.range(size).map(col => _.range(size).map(row => ({ row, col })))
+      ),
+      _.flatten(
+        _.range(size).map(row => _.range(size).map(col => ({ row, col })))
+      )
+    ]);
 
     const blocks = _.shuffle(positions).slice(0, numBlock);
 
@@ -151,7 +157,7 @@ export default function App() {
   const actionReplayNext = replay => {
     const [direction, ...remainReplay] = replay;
     console.log(direction);
-    const groupColor = _.chain(gameState)
+    const groupCol = _.chain(gameState)
       .filter(node => !node.locked)
       .groupBy("color")
       .map(group => {
@@ -162,7 +168,18 @@ export default function App() {
       })
       .max()
       .value();
-    if (groupColor === 1) {
+    const groupRow = _.chain(gameState)
+      .filter(node => !node.locked)
+      .groupBy("color")
+      .map(group => {
+        return _.chain(group)
+          .map(node => node.row)
+          .uniq()
+          .value().length;
+      })
+      .max()
+      .value();
+    if (groupCol === 1) {
       const state = {
         ...gameState
       };
@@ -173,6 +190,24 @@ export default function App() {
               row,
               col,
               color: colors[col],
+              key: `blank_${row}_${col}`
+            };
+          }
+        });
+      });
+      setGameState(state);
+      return;
+    } else if (groupRow === 1) {
+      const state = {
+        ...gameState
+      };
+      _.range(size).map(row => {
+        return _.range(size).map(col => {
+          if (!state[`${row},${col}`]) {
+            state[`${row},${col}`] = {
+              row,
+              col,
+              color: colors[row],
               key: `blank_${row}_${col}`
             };
           }
@@ -301,7 +336,7 @@ export default function App() {
           </p>
           <div
             style={{
-              height: showConfig ? 200 : 0,
+              height: showConfig ? 280 : 0,
               overflow: "hidden",
               transition: "ease all 0.2s"
             }}
@@ -372,6 +407,23 @@ export default function App() {
                 onChange={setDifficulty}
               />
             </p>
+            <p
+              style={{
+                marginBottom: "20px",
+                width: 300,
+                margin: "30px auto 40px"
+              }}
+            >
+              <label style={{ color: "white" }}>{round} Radius</label>
+              <Slider
+                dots
+                step={1}
+                value={round}
+                min={0}
+                max={23}
+                onChange={setRound}
+              />
+            </p>
           </div>
 
           <p>
@@ -436,14 +488,14 @@ export default function App() {
             marginTop: 50,
             border: "2px solid #BBBABB",
             background: "rgba(255, 255, 255, 0.1)",
-            borderRadius: 30
+            borderRadius: Math.min(round, 15)
           }}
         >
           {_.map(gameState, ({ row, col, color, key, locked }) => (
             <div
               key={key}
               style={{
-                borderRadius: locked ? 15 : 45,
+                borderRadius: locked ? Math.min(round, 15) : round,
                 background: color,
                 width: 45,
                 height: 45,
